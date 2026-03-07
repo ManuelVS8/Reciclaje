@@ -22,10 +22,6 @@
             --green:#2ecc71;
             --red:#e74c3c;
             --panel:#E8EAFF;
-            --marron:#b5651d;
-            --amarillo:#f5a623;
-            --verde:#4caf50;
-            --azul:#2196f3;
         }
         body{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -58,9 +54,19 @@
         .btn-primary:hover{ background:var(--orange-700); }
         
         /* Botones de contenedores específicos */
-        .btn-bin { padding: 0; min-width: 0; height: auto; background: none; border: none; }
+        .btn-bin { 
+            padding: 0; 
+            min-width: 0; 
+            height: auto; 
+            background: none; 
+            border: none; 
+            /* Permitimos que los botones se encojan para caber en la línea */
+            flex: 1 1 0; 
+            min-width: 50px; /* Ancho mínimo para que no desaparezcan */
+        }
         .btn-bin img { 
-            width: 100px; 
+            width: 100%; /* Ocupa el ancho del botón */
+            max-width: 90px; /* Tamaño máximo en escritorio */
             height: auto; 
             transition: transform 0.2s ease, filter 0.2s ease; 
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
@@ -92,14 +98,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 1rem; /* Reducido para compactar */
+            gap: 1rem; 
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
             flex: 1;
         }
         
-        /* Etiqueta del residuo (FUERA de la imagen) */
+        /* Etiqueta del residuo */
         .waste-label-display {
             font-family: 'Segoe UI', sans-serif;
             font-weight: 800;
@@ -115,7 +121,7 @@
             justify-content: center;
             align-items: center;
             background: var(--white);
-            min-height: 250px; /* Ajustado */
+            min-height: 250px; 
             padding: 10px;
             border-radius: 8px;
         }
@@ -129,12 +135,13 @@
             transition: transform 0.2s ease;
         }
         
+        /* CONTENEDOR DE BOTONES - CLAVE PARA MÓVIL */
         .btn-group {
             display: flex;
-            gap: 1rem;
+            gap: 0.5rem;
             width: 100%;
             justify-content: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap; /* FORZAR A MANTENERSE EN UNA LÍNEA */
             margin-top: 0.5rem;
         }
 
@@ -207,11 +214,10 @@
         </div>
 
         <div class="game1-container">
-            <!-- Nombre del residuo (FUERA de la imagen) -->
+            <!-- Nombre del residuo -->
             <div class="waste-label-display" id="wasteNameDisplay"></div>
 
             <div class="image-display">
-                <!-- Imagen JS -->
                 <img src="" alt="Residuo" id="game1Img">
             </div>
 
@@ -270,7 +276,7 @@
     let correctCount = 0;
     let currentItemIndex = 0;
     let gameItems = [];
-    let answered = false; // Bloqueo para clicks dobles
+    let answered = false;
 
     /* --- AUDIOS --- */
     const audioUrls = {
@@ -332,7 +338,6 @@
         document.getElementById('muteBtn').textContent = soundEnabled ? '🔊' : '🔇';
     }
     
-    // Función de voz
     function speak(text) {
         if (!soundEnabled) return;
         window.speechSynthesis.cancel();
@@ -423,10 +428,7 @@
             wasteNameDisplay.textContent = item.name;
             document.getElementById('levelIndicator').textContent = currentItemIndex + 1;
             
-            // Resetear animación
             game1Img.classList.remove('shake-anim');
-            
-            // Voz
             speak(item.name);
         } else {
             finishGame();
@@ -434,7 +436,7 @@
     }
 
     function checkAnswer(selectedType) {
-        if(answered) return; // Evitar doble click
+        if(answered) return;
         answered = true; 
         
         const correctType = gameItems[currentItemIndex].type;
@@ -444,13 +446,13 @@
             correctCount++;
             updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
             currentItemIndex++;
-            setTimeout(loadItem, 800); // Tiempo para ver la imagen
+            setTimeout(loadItem, 800);
         } else {
             playSound('error');
             game1Img.classList.add('shake-anim');
             updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
             currentItemIndex++;
-            setTimeout(loadItem, 1000); // Tiempo para ver el error
+            setTimeout(loadItem, 1000);
         }
     }
 
