@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="google" content="notranslate">
+    <title>Aprendemos a reciclar</title>
+    <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/icono.ico">
+    <style>
+        /* ====== Reset & base ====== */
+        * { box-sizing: border-box; margin:0; padding:0; }
+        :root{
+            --blue:#001DFF;
+            --blue-dark:#04032B;
+            --blue-700:#1a3a5f;
+            --blue-600:#254fba;
+            --orange:#f59e42;
+            --orange-700:#e67e22;
+            --bg-grad-1:#1a3a5f;
+            --bg-grad-2:#0d2340;
+            --white:#ffffff;
+            --green:#2ecc71;
+            --red:#e74c3c;
+            --panel:#E8EAFF;
+            --marron:#b5651d;
+            --amarillo:#f5a623;
+            --verde:#4caf50;
+            --azul:#2196f3;
+        }
+        body{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%);
+            min-height:100vh; 
+            display:flex; 
+            justify-content:center; 
+            align-items: flex-start; 
+            padding-top: 20px;
+            padding-bottom: 20px;
+            color:#333; 
+        }
+        .game-container{
+            background:var(--white); border-radius:16px; box-shadow:0 12px 24px rgba(0,0,0,.12);
+            padding:1.2rem; max-width:980px; width:100%; min-height:640px; position:relative; overflow:hidden;
+            display:flex; flex-direction:column;
+            margin-bottom: 2rem; 
+        }
+        header{ text-align:center; margin-bottom:.8rem; margin-top:1.5rem; }
+        h1{ color:var(--blue-dark); font-size:clamp(2rem,5.2vw,3.1rem); font-weight:900; letter-spacing:.5px; }
+        .subtitle{ color:var(--blue-700); font-size:clamp(1rem,3.5vw,1.25rem); margin-top:.25rem; }
+        .highlight-keyword{ color:var(--orange); font-weight:800; }
+
+        .btn{ color:#fff; border:none; padding:.75rem 1.2rem; border-radius:10px; cursor:pointer; font-weight:800;
+            transition:transform .08s ease, box-shadow .2s ease, background-color .25s ease; min-width:140px; height:48px;
+            display:inline-flex; align-items:center; justify-content:center; font-size: 1rem; }
+        .btn:hover{ transform:translateY(-2px); box-shadow:0 6px 14px rgba(0,0,0,.12); }
+        .btn:active{ transform:translateY(0); }
+        .btn-primary{ background:var(--orange); }
+        .btn-primary:hover{ background:var(--orange-700); }
+        
+        /* Botones de contenedores específicos */
+        .btn-bin { padding: 0; min-width: 0; height: auto; background: none; border: none; }
+        .btn-bin img { 
+            width: 100px; 
+            height: auto; 
+            transition: transform 0.2s ease, filter 0.2s ease; 
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+        }
+        .btn-bin:hover { transform: translateY(-5px) scale(1.05); background: none; }
+        .btn-bin:hover img { filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3)); }
+        .btn-bin:active { transform: scale(0.95); }
+
+        .screen{ display:none; animation:fadeIn .35s ease; flex-direction:column; flex:1; }
+        .screen.active{ display:flex; }
+        @keyframes fadeIn{ from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);} }
+
+        .game-info{ display:flex; gap:.6rem; align-items:center; justify-content:space-between; margin:.4rem 0 1rem; flex-wrap:wrap; }
+        .timer{ font-weight:900; color:var(--blue-700); font-size:clamp(.95rem,2.3vw,1.15rem); }
+        .progress-bar{ flex:1; height:10px; background:#e6f2ff; border-radius:999px; overflow:hidden; }
+        .progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--orange) 0%, var(--orange-700) 100%); transition:width .3s ease; }
+
+        /* Pantalla Inicio */
+        .start-content{ display:flex; flex-direction:column; justify-content:center; align-items:center; flex:1; gap:1rem; padding:1rem; }
+        .advice-box{ background:var(--panel); border-left:4px solid var(--blue-700); padding:1rem 1.2rem; border-radius:12px;
+            color:var(--blue-700); max-width:760px; text-align:center; font-size:clamp(1rem,3vw,1.15rem); }
+        .start-image{ max-width: 300px; width: 100%; margin: 0 auto; margin-top: auto; }
+        
+        .mute-btn{ position:absolute; top:.8rem; right:4.5rem; background:var(--orange); color:#fff; border:2px solid #fff; width:38px; height:38px; border-radius:50%; cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; z-index:20; }
+        .mute-btn:hover{ background:var(--orange-700); }
+
+        /* Juego Principal */
+        .game1-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem; /* Reducido para compactar */
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            flex: 1;
+        }
+        
+        /* Etiqueta del residuo (FUERA de la imagen) */
+        .waste-label-display {
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.2rem, 4vw, 1.8rem);
+            color: var(--blue-dark);
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .image-display {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--white);
+            min-height: 250px; /* Ajustado */
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .image-display img {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        /* Animación Sacudida */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+            100% { transform: translateX(0); }
+        }
+        .shake-anim {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* Pantalla Final */
+        .results{ display:flex; flex-direction:column; align-items:center; gap:.6rem; text-align:center; flex:1; justify-content:center;}
+        .final-title{ color:var(--blue-dark); font-weight:900; }
+        .big-score{ font-size:clamp(2.2rem,6vw,3.4rem); color:var(--blue-600); font-weight:900; }
+        .score-title{ font-size:1.0rem; color:var(--blue-700); margin-top:1rem; }
+        .final-time{ color:var(--blue-700); }
+        
+        #trophyBox { display: none; font-size: clamp(4rem, 10vw, 7rem); margin: .5rem 0; text-align: center; align-self: center; animation: bounce 1s ease infinite; color: var(--orange); line-height: 1; }
+        @keyframes bounce { 0%,100%{ transform: translateY(0) scale(1); } 50%{ transform: translateY(-15px) scale(1.1); } }
+        
+        .credit{ color:var(--blue-700); margin-top:1rem; }
+        #finalMsg { font-size: clamp(1.2rem, 4.2vw, 1.8rem); font-weight: 800; color: var(--blue-700); margin-top: 0.6rem; }
+        .school-logo { display: block; width: 160px; max-width: 28%; height: auto; margin-top: 0.8rem; border-radius: 8px; object-fit: contain; }
+        @media (max-width: 899px) { .school-logo { width: 140px; max-width: 160px; } }
+        @media (max-width: 420px) { .school-logo { width: 110px; max-width: 40%; margin-top: 0.6rem; } }
+
+        .confetti{ position:fixed; width:10px; height:10px; border-radius:50%; animation: confetti-fall 3s linear forwards; z-index:999; }
+        @keyframes confetti-fall{ 0%{ transform:translate(0, -20px) rotate(0); opacity:1;} 100%{ transform:translate(var(--tx), var(--ty)) rotate(360deg); opacity:0; } }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <button class="mute-btn" id="muteBtn" title="Silenciar/Activar sonido">🔊</button>
+
+    <!-- Pantalla de Inicio -->
+    <section class="screen active" id="startScreen">
+        <header>
+            <h1>Aprendemos a reciclar</h1>
+            <div class="subtitle">Separa los residuos en su contenedor</div>
+        </header>
+
+        <div class="start-content">
+            <div class="advice-box">
+                <span class="advice-text">Recuerda: en el <span class="highlight-keyword">marrón</span>, restos orgánicos; en el <span class="highlight-keyword">amarillo</span>, envases; en el <span class="highlight-keyword">verde</span>, vidrio; y en el <span class="highlight-keyword">azul</span>, papel y cartón.
+                    <strong style="display:block; margin-top:0.5rem; text-align: center;">¡Buena suerte!</strong>
+                </span>
+            </div>
+            
+            <button class="btn btn-primary" id="startBtn">Comenzar</button>
+            
+            <img class="start-image" src="https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/refs/heads/main/Ni%C3%B1os.png" alt="Niños reciclando">
+        </div>
+    </section>
+
+    <!-- Pantalla Juego -->
+    <section class="screen" id="game1Screen">
+        <header>
+            <h1>¿Dónde va este residuo?</h1>
+        </header>
+        <div class="game-info">
+            <div class="timer" id="timerGame1">00:00.0</div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFillGame1"></div></div>
+            <div class="timer" style="font-size:0.9rem;">Nivel <span id="levelIndicator">1</span>/12</div>
+        </div>
+
+        <div class="game1-container">
+            <!-- Nombre del residuo (FUERA de la imagen) -->
+            <div class="waste-label-display" id="wasteNameDisplay"></div>
+
+            <div class="image-display">
+                <!-- Imagen JS -->
+                <img src="" alt="Residuo" id="game1Img">
+            </div>
+
+            <!-- Contenedores -->
+            <div class="btn-group">
+                <button class="btn-bin" onclick="checkAnswer('organico')" id="btnMarron">
+                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron.png" alt="Marrón">
+                </button>
+                <button class="btn-bin" onclick="checkAnswer('envases')" id="btnAmarillo">
+                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/amarillo.png" alt="Amarillo">
+                </button>
+                <button class="btn-bin" onclick="checkAnswer('vidrio')" id="btnVerde">
+                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Verde.png" alt="Verde">
+                </button>
+                <button class="btn-bin" onclick="checkAnswer('papel')" id="btnAzul">
+                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Azul.png" alt="Azul">
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pantalla Final -->
+    <section class="screen" id="finalScreen">
+        <header>
+            <h1 class="final-title">Aprendemos a reciclar</h1>
+        </header>
+        <div class="results">
+            <div id="trophyBox">🏆</div>
+            
+            <div class="score-title">Puntuación:</div>
+            <div class="big-score" id="finalScore">0</div>
+            <div class="final-time">Tiempo: <span id="finalTime">00:00.0</span></div>
+            <div id="finalMsg" class="subtitle"></div>
+            <button class="btn btn-primary" id="backToMenuBtn" style="background:var(--orange);">Volver al menú</button>
+            <span class="credit">Creado por Manuel J. Ventura</span>
+            <img class="school-logo" src="https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/refs/heads/main/Siurot.png" alt="School logo" />
+        </div>
+    </section>
+</div>
+
+<script>
+    /* --- 1. CONFIGURACIÓN DE VARIABLES GLOBALES --- */
+    const TOTAL_ITEMS = 12;
+    const POINTS_PER_ITEM = 100 / 12; 
+
+    let soundEnabled = true;
+    let audioUnlocked = false;
+    let isMuted = false;
+
+    let startTime = 0;
+    let timerInterval = null;
+    let elapsed = 0;
+    let finalTimeVal = 0;
+    let finalScoreVal = 0;
+
+    let correctCount = 0;
+    let currentItemIndex = 0;
+    let gameItems = [];
+    let answered = false; // Bloqueo para clicks dobles
+
+    /* --- AUDIOS --- */
+    const audioUrls = {
+        correct: 'https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/main/Correcto.mp3',
+        error: 'https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/main/Error.mp3',
+        tap: 'https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/main/Tap.mp3',
+        victory: 'https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/main/Termin%C3%A9.mp3',
+        completed: 'https://raw.githubusercontent.com/ManuelVS8/Efectos_audio/main/Completado.mp3'
+    };
+    
+    const audioObjects = {};
+    Object.keys(audioUrls).forEach(key => { 
+        const a = new Audio();
+        a.src = audioUrls[key];
+        a.preload = 'auto';
+        audioObjects[key] = a; 
+    });
+
+    /* --- DATOS DEL JUEGO --- */
+    const rawData = [
+        { name: "Cáscaras de frutas", type: 'organico', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron1.png' },
+        { name: "Espinas de pescado", type: 'organico', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron2.png' },
+        { name: "Hueso de pollo",    type: 'organico', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron3.png' },
+        { name: "Lata de atún",        type: 'envases', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/envase1.png' },
+        { name: "Botellas de plástico", type: 'envases', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/envase2.png' },
+        { name: "Bolsas de plástico",   type: 'envases', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/envase3.png' },
+        { name: "Botellín de refresco", type: 'vidrio', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/vidrio1.png' },
+        { name: "Restos de botella",    type: 'vidrio', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/vidrio2.png' },
+        { name: "Envases de vidrio",    type: 'vidrio', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/vidrio3.png' },
+        { name: "Papel usado",       type: 'papel', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/papel1.png' },
+        { name: "Caja de cartón",    type: 'papel', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/papel2.png' },
+        { name: "Periódicos viejos", type: 'papel', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/papel3.png' }
+    ];
+
+    /* --- FUNCIONES DE AUDIO --- */
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(); const g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination); g.gain.value = 0.001;
+            osc.start(); osc.stop(ctx.currentTime + 0.01);
+            audioUnlocked = true;
+            isMuted = false;
+        } catch(e) { audioUnlocked = true; }
+    }
+
+    function playSound(type) {
+        if (!soundEnabled || isMuted) return;
+        if (!audioUnlocked) unlockAudio();
+        const a = audioObjects[type];
+        if(!a) return;
+        try { a.currentTime = 0; a.play(); } catch(e){}
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        isMuted = !soundEnabled;
+        document.getElementById('muteBtn').textContent = soundEnabled ? '🔊' : '🔇';
+    }
+    
+    // Función de voz
+    function speak(text) {
+        if (!soundEnabled) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- LÓGICA GENERAL --- */
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function startGlobalTimer() {
+        stopTimer();
+        startTime = Date.now();
+        elapsed = 0;
+        timerInterval = setInterval(() => {
+            const now = Date.now();
+            const delta = (now - startTime) / 1000;
+            elapsed = delta;
+            
+            const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const s = Math.floor(elapsed % 60).toString().padStart(2, '0');
+            const ms = Math.round((elapsed % 1) * 10);
+            
+            const timeStr = `${m}:${s}.${ms}`;
+            if(document.getElementById('timerGame1')) document.getElementById('timerGame1').textContent = timeStr;
+        }, 100);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = Math.floor(sec % 60).toString().padStart(2, '0');
+        const ms = Math.round((sec % 1) * 10);
+        return `${m}:${s}.${ms}`;
+    }
+
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    function updateProgress(id, pct) {
+        document.getElementById(id).style.width = pct + '%';
+    }
+
+    /* --- FLUJO PRINCIPAL --- */
+    document.getElementById('startBtn').onclick = () => { 
+        playSound('tap'); 
+        startGlobalTimer();
+        initGame();
+    };
+
+    /* --- JUEGO --- */
+    const game1Img = document.getElementById('game1Img');
+    const wasteNameDisplay = document.getElementById('wasteNameDisplay');
+
+    function initGame() {
+        showScreen('game1Screen');
+        correctCount = 0;
+        currentItemIndex = 0;
+        updateProgress('progressFillGame1', 0);
+        
+        gameItems = shuffle([...rawData]);
+        loadItem();
+    }
+
+    function loadItem() {
+        if (currentItemIndex < TOTAL_ITEMS) {
+            answered = false;
+            const item = gameItems[currentItemIndex];
+            game1Img.src = item.img;
+            wasteNameDisplay.textContent = item.name;
+            document.getElementById('levelIndicator').textContent = currentItemIndex + 1;
+            
+            // Resetear animación
+            game1Img.classList.remove('shake-anim');
+            
+            // Voz
+            speak(item.name);
+        } else {
+            finishGame();
+        }
+    }
+
+    function checkAnswer(selectedType) {
+        if(answered) return; // Evitar doble click
+        answered = true; 
+        
+        const correctType = gameItems[currentItemIndex].type;
+
+        if (selectedType === correctType) {
+            playSound('correct');
+            correctCount++;
+            updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
+            currentItemIndex++;
+            setTimeout(loadItem, 800); // Tiempo para ver la imagen
+        } else {
+            playSound('error');
+            game1Img.classList.add('shake-anim');
+            updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
+            currentItemIndex++;
+            setTimeout(loadItem, 1000); // Tiempo para ver el error
+        }
+    }
+
+    /* --- FINALIZAR --- */
+    function finishGame() {
+        stopTimer();
+        finalTimeVal = elapsed;
+        
+        finalScoreVal = Math.round(correctCount * POINTS_PER_ITEM);
+
+        document.getElementById('finalScore').textContent = finalScoreVal;
+        document.getElementById('finalTime').textContent = formatTime(finalTimeVal);
+
+        const trophyBox = document.getElementById('trophyBox');
+        const msg = document.getElementById('finalMsg');
+        
+        if (finalScoreVal === 100) {
+            trophyBox.style.display = 'block';
+            msg.textContent = '¡Enhorabuena, puntuación máxima!';
+            playSound('victory');
+            createConfetti();
+        } else {
+            trophyBox.style.display = 'none';
+            msg.textContent = '¡Buen trabajo! Sigue practicando';
+            playSound('completed');
+        }
+
+        showScreen('finalScreen');
+    }
+
+    /* --- EFECTOS VISUALES --- */
+    function createConfetti() {
+        for(let i=0;i<100;i++){
+            setTimeout(()=>{
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                const x = Math.random() * window.innerWidth;
+                const tx = (Math.random() - 0.5) * 200;
+                c.style.left = x + 'px';
+                c.style.top = '-10px';
+                c.style.backgroundColor = ['#ff595e','#1982c4','#6a4c93','#ffca3a','#8ac926'][Math.floor(Math.random()*5)];
+                c.style.setProperty('--tx', tx + 'px');
+                c.style.setProperty('--ty', window.innerHeight + 20 + 'px');
+                document.body.appendChild(c);
+                setTimeout(() => c.remove(), 3000);
+            }, i * 20);
+        }
+    }
+
+    document.getElementById('backToMenuBtn').onclick = () => { 
+        playSound('tap'); 
+        location.reload(); 
+    };
+    
+    document.getElementById('muteBtn').onclick = toggleSound;
+
+</script>
+</body>
+</html>
