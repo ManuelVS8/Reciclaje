@@ -53,20 +53,18 @@
         .btn-primary{ background:var(--orange); }
         .btn-primary:hover{ background:var(--orange-700); }
         
-        /* Botones de contenedores específicos */
         .btn-bin { 
             padding: 0; 
             min-width: 0; 
             height: auto; 
             background: none; 
             border: none; 
-            /* Permitimos que los botones se encojan para caber en la línea */
             flex: 1 1 0; 
-            min-width: 50px; /* Ancho mínimo para que no desaparezcan */
+            min-width: 50px; 
         }
         .btn-bin img { 
-            width: 100%; /* Ocupa el ancho del botón */
-            max-width: 90px; /* Tamaño máximo en escritorio */
+            width: 100%; 
+            max-width: 90px; 
             height: auto; 
             transition: transform 0.2s ease, filter 0.2s ease; 
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
@@ -105,7 +103,6 @@
             flex: 1;
         }
         
-        /* Etiqueta del residuo */
         .waste-label-display {
             font-family: 'Segoe UI', sans-serif;
             font-weight: 800;
@@ -135,17 +132,15 @@
             transition: transform 0.2s ease;
         }
         
-        /* CONTENEDOR DE BOTONES - CLAVE PARA MÓVIL */
         .btn-group {
             display: flex;
             gap: 0.5rem;
             width: 100%;
             justify-content: center;
-            flex-wrap: nowrap; /* FORZAR A MANTENERSE EN UNA LÍNEA */
+            flex-wrap: nowrap;
             margin-top: 0.5rem;
         }
 
-        /* Animación Sacudida */
         @keyframes shake {
             0% { transform: translateX(0); }
             20% { transform: translateX(-10px); }
@@ -214,14 +209,12 @@
         </div>
 
         <div class="game1-container">
-            <!-- Nombre del residuo -->
             <div class="waste-label-display" id="wasteNameDisplay"></div>
 
             <div class="image-display">
                 <img src="" alt="Residuo" id="game1Img">
             </div>
 
-            <!-- Contenedores -->
             <div class="btn-group">
                 <button class="btn-bin" onclick="checkAnswer('organico')" id="btnMarron">
                     <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron.png" alt="Marrón">
@@ -266,6 +259,7 @@
     let soundEnabled = true;
     let audioUnlocked = false;
     let isMuted = false;
+    let audioContext; // Variable para contexto de audio
 
     let startTime = 0;
     let timerInterval = null;
@@ -312,21 +306,27 @@
     ];
 
     /* --- FUNCIONES DE AUDIO --- */
-    function unlockAudio() {
-        if (audioUnlocked) return;
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator(); const g = ctx.createGain();
-            osc.connect(g); g.connect(ctx.destination); g.gain.value = 0.001;
-            osc.start(); osc.stop(ctx.currentTime + 0.01);
-            audioUnlocked = true;
-            isMuted = false;
-        } catch(e) { audioUnlocked = true; }
+    
+    // FIX CHROMEOS: Desbloquear contexto de audio
+    function unlockAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        // Buffer silencioso para activar motor
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        audioUnlocked = true;
     }
 
     function playSound(type) {
         if (!soundEnabled || isMuted) return;
-        if (!audioUnlocked) unlockAudio();
+        if (!audioUnlocked) unlockAudioContext();
         const a = audioObjects[type];
         if(!a) return;
         try { a.currentTime = 0; a.play(); } catch(e){}
@@ -336,6 +336,50 @@
         soundEnabled = !soundEnabled;
         isMuted = !soundEnabled;
         document.getElementById('muteBtn').textContent = soundEnabled ? '🔊' : '🔇';
+        playSound('tap');
+        if (isMuted) window.speechSynthesis.cancel();
+    }
+
+    /* --- FUNCIONES DE SÍNTESIS DE VOZ (TTS) --- */
+    let selectedVoice = null;
+    let voicesLoaded = false; // Flag para ChromeOS
+
+    function loadVoices() {
+        const voices = speechSynthesis.getVoices();
+        if (voices.length === 0) return;
+
+        voicesLoaded = true;
+        
+        // 1. Prioridad Google
+        let voice = voices.find(v => v.name === "Google español");
+        
+        // 2. Alternativa Microsoft/Natural
+        if (!voice) {
+            voice = voices.find(v => 
+                v.lang === 'es-ES' && 
+                (v.name.includes("Microsoft") || v.name.includes("Natural"))
+            );
+        }
+        
+        // 3. Fallback
+        if (!voice) {
+             voice = voices.find(v => v.lang.startsWith('es'));
+        }
+        
+        if (voice) selectedVoice = voice;
+    }
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    loadVoices();
+
+    // FIX CHROMEOS: Forzar inicialización TTS
+    function forceInitTTS() {
+        if (!voicesLoaded) {
+            const tempUtterance = new SpeechSynthesisUtterance('');
+            speechSynthesis.speak(tempUtterance);
+        }
     }
     
     function speak(text) {
@@ -343,7 +387,14 @@
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'es-ES';
-        utterance.rate = 1.0;
+        
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            utterance.rate = 1.0;
+        } else {
+            utterance.rate = 0.9;
+        }
+        
         window.speechSynthesis.speak(utterance);
     }
 
@@ -400,7 +451,9 @@
     }
 
     /* --- FLUJO PRINCIPAL --- */
-    document.getElementById('startBtn').onclick = () => { 
+    document.getElementById('startBtn').onclick = () => {
+        unlockAudioContext();
+        forceInitTTS();
         playSound('tap'); 
         startGlobalTimer();
         initGame();
@@ -459,6 +512,10 @@
     /* --- FINALIZAR --- */
     function finishGame() {
         stopTimer();
+        
+        // FIX: Cancelar audios TTS al terminar
+        window.speechSynthesis.cancel();
+        
         finalTimeVal = elapsed;
         
         finalScoreVal = Math.round(correctCount * POINTS_PER_ITEM);
