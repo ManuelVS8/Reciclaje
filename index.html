@@ -315,7 +315,6 @@
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
-        // Buffer silencioso para activar motor
         const buffer = audioContext.createBuffer(1, 1, 22050);
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
@@ -342,7 +341,7 @@
 
     /* --- FUNCIONES DE SÍNTESIS DE VOZ (TTS) --- */
     let selectedVoice = null;
-    let voicesLoaded = false; // Flag para ChromeOS
+    let voicesLoaded = false;
 
     function loadVoices() {
         const voices = speechSynthesis.getVoices();
@@ -350,10 +349,8 @@
 
         voicesLoaded = true;
         
-        // 1. Prioridad Google
         let voice = voices.find(v => v.name === "Google español");
         
-        // 2. Alternativa Microsoft/Natural
         if (!voice) {
             voice = voices.find(v => 
                 v.lang === 'es-ES' && 
@@ -361,7 +358,6 @@
             );
         }
         
-        // 3. Fallback
         if (!voice) {
              voice = voices.find(v => v.lang.startsWith('es'));
         }
@@ -374,12 +370,23 @@
     }
     loadVoices();
 
-    // FIX CHROMEOS: Forzar inicialización TTS
+    // FIX CHROMEOS: Forzar inicialización TTS con interacción directa
     function forceInitTTS() {
-        if (!voicesLoaded) {
-            const tempUtterance = new SpeechSynthesisUtterance('');
-            speechSynthesis.speak(tempUtterance);
-        }
+        // Intentamos cargar voces si no están listas
+        loadVoices();
+        
+        // IMPORTANTE: Para Chromebook, debemos hacer un speak DENTRO del evento de usuario.
+        // Este "pop" silencioso autoriza al motor de voz a funcionar.
+        // Si usamos setTimeout, ChromeOS lo bloqueará.
+        const utterance = new SpeechSynthesisUtterance(' ');
+        utterance.lang = 'es-ES';
+        utterance.volume = 0; // Silencioso
+        utterance.rate = 0.1;
+        
+        if (selectedVoice) utterance.voice = selectedVoice;
+        
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
     }
     
     function speak(text) {
@@ -451,9 +458,15 @@
     }
 
     /* --- FLUJO PRINCIPAL --- */
-    document.getElementById('startBtn').onclick = () => {
+    
+    // CAPTURA DEL EVENTO ONCLICK DIRECTAMENTE (CRUCIAL PARA CHROMEBOOK)
+    document.getElementById('startBtn').onclick = function() {
+        // 1. Desbloqueamos audio (obligatorio iOS/ChromeOS)
         unlockAudioContext();
+        
+        // 2. Forzamos inicio TTS DENTRO del clic (obligatorio ChromeOS)
         forceInitTTS();
+        
         playSound('tap'); 
         startGlobalTimer();
         initGame();
