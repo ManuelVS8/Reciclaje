@@ -129,7 +129,7 @@
             object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
         .btn-group {
@@ -215,20 +215,8 @@
                 <img src="" alt="Residuo" id="game1Img">
             </div>
 
-            <div class="btn-group">
-                <button class="btn-bin" onclick="checkAnswer('organico')" id="btnMarron">
-                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron.png" alt="Marrón">
-                </button>
-                <button class="btn-bin" onclick="checkAnswer('envases')" id="btnAmarillo">
-                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/amarillo.png" alt="Amarillo">
-                </button>
-                <button class="btn-bin" onclick="checkAnswer('vidrio')" id="btnVerde">
-                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Verde.png" alt="Verde">
-                </button>
-                <button class="btn-bin" onclick="checkAnswer('papel')" id="btnAzul">
-                    <img src="https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Azul.png" alt="Azul">
-                </button>
-            </div>
+            <!-- Contenedores vacíos, se inyectan con JS -->
+            <div class="btn-group" id="binsContainer"></div>
         </div>
     </section>
 
@@ -254,12 +242,12 @@
 <script>
     /* --- 1. CONFIGURACIÓN DE VARIABLES GLOBALES --- */
     const TOTAL_ITEMS = 12;
-    const POINTS_PER_ITEM = 100 / 12; 
+    const intentosMinimos = 12; // Constante para la fórmula
 
     let soundEnabled = true;
     let audioUnlocked = false;
     let isMuted = false;
-    let audioContext; // Variable para contexto de audio
+    let audioContext; 
 
     let startTime = 0;
     let timerInterval = null;
@@ -267,7 +255,7 @@
     let finalTimeVal = 0;
     let finalScoreVal = 0;
 
-    let correctCount = 0;
+    let totalAttempts = 0; // Contador global de interacciones
     let currentItemIndex = 0;
     let gameItems = [];
     let answered = false;
@@ -305,9 +293,16 @@
         { name: "Periódicos viejos", type: 'papel', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/papel3.png' }
     ];
 
+    /* --- DATOS DE CONTENEDORES (Para barajear) --- */
+    const binsData = [
+        { type: 'organico', id: 'btnMarron', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/marron.png', alt: 'Marrón' },
+        { type: 'envases', id: 'btnAmarillo', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/amarillo.png', alt: 'Amarillo' },
+        { type: 'vidrio', id: 'btnVerde', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Verde.png', alt: 'Verde' },
+        { type: 'papel', id: 'btnAzul', img: 'https://raw.githubusercontent.com/ManuelVS8/Audios-juegos-SCIENCE/refs/heads/main/C_MEDIO1/Reciclaje/Azul.png', alt: 'Azul' }
+    ];
+
     /* --- FUNCIONES DE AUDIO --- */
     
-    // FIX CHROMEOS: Desbloquear contexto de audio
     function unlockAudioContext() {
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -368,19 +363,15 @@
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = loadVoices;
     }
-    loadVoices();
 
-    // FIX CHROMEOS: Forzar inicialización TTS con interacción directa
+    // PRECARGA FORZADA DENTRO DEL CLIC DE COMENZAR
     function forceInitTTS() {
-        // Intentamos cargar voces si no están listas
         loadVoices();
         
-        // IMPORTANTE: Para Chromebook, debemos hacer un speak DENTRO del evento de usuario.
-        // Este "pop" silencioso autoriza al motor de voz a funcionar.
-        // Si usamos setTimeout, ChromeOS lo bloqueará.
+        // Hablar un espacio en blanco a volumen 0 para desbloquear el motor de voz en ChromeOS/iOS
         const utterance = new SpeechSynthesisUtterance(' ');
         utterance.lang = 'es-ES';
-        utterance.volume = 0; // Silencioso
+        utterance.volume = 0; 
         utterance.rate = 0.1;
         
         if (selectedVoice) utterance.voice = selectedVoice;
@@ -459,13 +450,9 @@
 
     /* --- FLUJO PRINCIPAL --- */
     
-    // CAPTURA DEL EVENTO ONCLICK DIRECTAMENTE (CRUCIAL PARA CHROMEBOOK)
     document.getElementById('startBtn').onclick = function() {
-        // 1. Desbloqueamos audio (obligatorio iOS/ChromeOS)
         unlockAudioContext();
-        
-        // 2. Forzamos inicio TTS DENTRO del clic (obligatorio ChromeOS)
-        forceInitTTS();
+        forceInitTTS(); // Precargamos TTS aquí
         
         playSound('tap'); 
         startGlobalTimer();
@@ -478,11 +465,27 @@
 
     function initGame() {
         showScreen('game1Screen');
-        correctCount = 0;
+        totalAttempts = 0;
         currentItemIndex = 0;
         updateProgress('progressFillGame1', 0);
         
+        // Barajamos los residuos
         gameItems = shuffle([...rawData]);
+        
+        // Barajamos los contenedores y los inyectamos en el DOM
+        const shuffledBins = shuffle([...binsData]);
+        const binsContainer = document.getElementById('binsContainer');
+        binsContainer.innerHTML = ''; // Limpiamos por si se reinicia
+        
+        shuffledBins.forEach(bin => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-bin';
+            btn.id = bin.id;
+            btn.onclick = () => checkAnswer(bin.type);
+            btn.innerHTML = `<img src="${bin.img}" alt="${bin.alt}">`;
+            binsContainer.appendChild(btn);
+        });
+
         loadItem();
     }
 
@@ -491,6 +494,7 @@
             answered = false;
             const item = gameItems[currentItemIndex];
             game1Img.src = item.img;
+            game1Img.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)'; // Reseteamos sombra
             wasteNameDisplay.textContent = item.name;
             document.getElementById('levelIndicator').textContent = currentItemIndex + 1;
             
@@ -502,36 +506,49 @@
     }
 
     function checkAnswer(selectedType) {
-        if(answered) return;
-        answered = true; 
+        // Si ya acertó y está esperando el timeout, ignoramos más clics
+        if(answered) return; 
         
+        totalAttempts++; // Sumamos intento sea correcto o incorrecto
         const correctType = gameItems[currentItemIndex].type;
 
         if (selectedType === correctType) {
+            answered = true; // Bloqueamos hasta que cargue el siguiente
             playSound('correct');
-            correctCount++;
+            
+            // Feedback visual verde
+            game1Img.style.boxShadow = '0 0 20px 8px rgba(46, 204, 113, 0.6)';
+            
             updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
             currentItemIndex++;
             setTimeout(loadItem, 800);
         } else {
+            // NO avanza, answered sigue siendo false para permitir intentar de nuevo
             playSound('error');
+            
+            // Feedback visual rojo y sacudida
+            game1Img.style.boxShadow = '0 0 20px 8px rgba(231, 76, 60, 0.6)';
             game1Img.classList.add('shake-anim');
-            updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
-            currentItemIndex++;
-            setTimeout(loadItem, 1000);
+            
+            // Quitamos la sacudida tras el tiempo de animación pero mantenemos la sombra
+            setTimeout(() => {
+                game1Img.classList.remove('shake-anim');
+                // Opcional: quitar la sombra roja si prefieres que solo parpadee
+                // game1Img.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
+            }, 500);
         }
     }
 
     /* --- FINALIZAR --- */
     function finishGame() {
         stopTimer();
-        
-        // FIX: Cancelar audios TTS al terminar
         window.speechSynthesis.cancel();
         
         finalTimeVal = elapsed;
         
-        finalScoreVal = Math.round(correctCount * POINTS_PER_ITEM);
+        // Cálculo exacto según la plantilla
+        let calculatedScore = 100 - ((totalAttempts - intentosMinimos) * (100 / intentosMinimos));
+        finalScoreVal = Math.max(0, Math.round(calculatedScore));
 
         document.getElementById('finalScore').textContent = finalScoreVal;
         document.getElementById('finalTime').textContent = formatTime(finalTimeVal);
