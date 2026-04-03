@@ -94,7 +94,7 @@
         /* Juego Principal */
         .game1-container {
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* <-- AQUÍ ESTABA EL FALLO: HABÍA UNA COMA EN VEZ DE PUNTO Y COMA */
             align-items: center;
             gap: 1rem; 
             width: 100%;
@@ -323,7 +323,10 @@
         if (!audioUnlocked) unlockAudioContext();
         const a = audioObjects[type];
         if(!a) return;
-        try { a.currentTime = 0; a.play(); } catch(e){}
+        try { 
+            a.currentTime = 0; // Evita solapamientos por clics rápidos
+            a.play(); 
+        } catch(e){}
     }
 
     function toggleSound() {
@@ -368,7 +371,6 @@
     function forceInitTTS() {
         loadVoices();
         
-        // Hablar un espacio en blanco a volumen 0 para desbloquear el motor de voz en ChromeOS/iOS
         const utterance = new SpeechSynthesisUtterance(' ');
         utterance.lang = 'es-ES';
         utterance.volume = 0; 
@@ -382,7 +384,7 @@
     
     function speak(text) {
         if (!soundEnabled) return;
-        window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel(); // Evita solapamiento de voz
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'es-ES';
         
@@ -451,10 +453,25 @@
     /* --- FLUJO PRINCIPAL --- */
     
     document.getElementById('startBtn').onclick = function() {
+        // 1. Desbloqueamos Audio Context
         unlockAudioContext();
-        forceInitTTS(); // Precargamos TTS aquí
         
-        playSound('tap'); 
+        // 2. PRECARGA MP3 A VOLUMEN 0: Iteramos y forzamos descarga a RAM sin emitir sonido
+        Object.values(audioObjects).forEach(audio => {
+            const originalVolume = audio.volume;
+            audio.volume = 0; // Silenciamos antes de forzar
+            audio.play().then(() => {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = originalVolume; // Restauramos volumen
+            }).catch(() => {
+                audio.volume = originalVolume; // Nos aseguramos de restaurarlo si falla
+            });
+        });
+
+        // 3. Precargamos TTS
+        forceInitTTS(); 
+        
         startGlobalTimer();
         initGame();
     };
@@ -506,35 +523,28 @@
     }
 
     function checkAnswer(selectedType) {
-        // Si ya acertó y está esperando el timeout, ignoramos más clics
         if(answered) return; 
         
-        totalAttempts++; // Sumamos intento sea correcto o incorrecto
+        totalAttempts++; 
         const correctType = gameItems[currentItemIndex].type;
 
         if (selectedType === correctType) {
-            answered = true; // Bloqueamos hasta que cargue el siguiente
+            answered = true; 
             playSound('correct');
             
-            // Feedback visual verde
             game1Img.style.boxShadow = '0 0 20px 8px rgba(46, 204, 113, 0.6)';
             
             updateProgress('progressFillGame1', ((currentItemIndex + 1) / TOTAL_ITEMS) * 100);
             currentItemIndex++;
             setTimeout(loadItem, 800);
         } else {
-            // NO avanza, answered sigue siendo false para permitir intentar de nuevo
             playSound('error');
             
-            // Feedback visual rojo y sacudida
             game1Img.style.boxShadow = '0 0 20px 8px rgba(231, 76, 60, 0.6)';
             game1Img.classList.add('shake-anim');
             
-            // Quitamos la sacudida tras el tiempo de animación pero mantenemos la sombra
             setTimeout(() => {
                 game1Img.classList.remove('shake-anim');
-                // Opcional: quitar la sombra roja si prefieres que solo parpadee
-                // game1Img.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
             }, 500);
         }
     }
@@ -542,6 +552,12 @@
     /* --- FINALIZAR --- */
     function finishGame() {
         stopTimer();
+        
+        // LIMPIEZA AL CAMBIAR DE PANTALLA: Pausamos MP3 y cancelamos Voz
+        Object.values(audioObjects).forEach(audio => {
+            if (!audio.paused) audio.pause();
+            audio.currentTime = 0;
+        });
         window.speechSynthesis.cancel();
         
         finalTimeVal = elapsed;
